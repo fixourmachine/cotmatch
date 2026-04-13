@@ -12,6 +12,7 @@ async function fetchLocation() {
 
     if (!input) { 
         homeCoords = { lat: 51.499842, lon: -0.124638 }; 
+        lastPostcode = "";
         status.classList.add('hidden'); 
         if (locWarning) locWarning.classList.add('hidden');
         filterData(); 
@@ -52,6 +53,7 @@ async function fetchLocation() {
         }
     } catch (e) { 
         homeCoords = { lat: 51.499842, lon: -0.124638 }; 
+        lastPostcode = "";
         status.innerText = "Invalid postcode. Try format: SW1A 1AA or SW1A"; 
         status.className = "text-xs mt-1 text-red-500 block"; 
         if (locWarning) locWarning.classList.remove('hidden');
@@ -104,7 +106,7 @@ function filterData() {
         return true;
     });
 
-    if (homeCoords) {
+    if (homeCoords && lastPostcode) {
         results.forEach(u => u.dist = calculateMiles(homeCoords.lat, homeCoords.lon, u.lat, u.lon));
         results.sort((a, b) => a.dist - b.dist);
     } else {
@@ -249,6 +251,7 @@ function resetFilters() {
     if (locWarning) locWarning.classList.add('hidden');
 
     homeCoords = { lat: 51.499842, lon: -0.124638 }; 
+    lastPostcode = "";
     document.querySelectorAll('input[type="number"]').forEach(e => e.value = '');
     document.querySelectorAll('input[type="checkbox"]').forEach(e => e.checked = false);
     document.getElementById('level').value = 'all'; 
