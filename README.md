@@ -4,7 +4,7 @@
 
 [![PWA](https://img.shields.io/badge/PWA-Offline%20Ready-4A90E2?style=flat-square&logo=pwa)](https://apkumar.github.io/cotmatch/)
 [![Units](https://img.shields.io/badge/Units-197%20UK%20Neonatal%20Sites-2ecc71?style=flat-square)](#database-methodology)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
+[![License: GNU Affero]([https://www.gnu.org/graphics/agplv3-155x51.png])?style=flat-square)](LICENSE)
 
 ---
 
