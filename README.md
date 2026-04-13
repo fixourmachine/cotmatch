@@ -1,4 +1,4 @@
-# CotMatch — UK Neonatal Unit Directory
+# CotMatch — UK Neonatal Unit Directory - Right care, right time, right place
 
 > **A progressive web app for rapid neonatal unit lookup, clinical criteria matching, and transport coordination across the United Kingdom.**
 
@@ -207,7 +207,7 @@ Clinical capabilities are assigned using **BAPM's three-tier framework** as a ba
 
 Simply go to:
 
-**[https://apkumar.github.io/cotmatch/](https://apkumar.github.io/cotmatch/)**
+**[https://fixourmachine.github.io/cotmatch/](https://fixourmachine.github.io/cotmatch/)**
 
 No account, no login, no installation required.
 
@@ -221,7 +221,7 @@ If you are an ODN or trust wishing to host a private instance with customised da
 
 ```bash
 # Clone the repository
-git clone https://github.com/apkumar/cotmatch.git
+git clone https://github.com/fixourmachine/cotmatch.git
 cd cotmatch
 
 # Option 1: Python (built into macOS/Linux)
@@ -270,7 +270,7 @@ Neonatal services change. Units downgrade, relocate, close, or update their cont
 
 **If you notice incorrect information** — a wrong phone number, a closed unit still listed, a capability incorrectly flagged — please raise it via one of the following:
 
-- **GitHub Issue:** [Open an issue](https://github.com/apkumar/cotmatch/issues/new) with the unit name, the incorrect field, and the correct value with a source link if possible
+- **GitHub Issue:** [Open an issue](https://github.com/fixourmachine/cotmatch/issues/new) with the unit name, the incorrect field, and the correct value with a source link if possible
 - **Pull Request:** If you are comfortable with JSON, edit `uk_neonatal_units.json` directly and submit a PR
 - **Email:** Contact details in the project maintainer section below
 
@@ -280,14 +280,14 @@ We aim to review and apply corrections within 48 hours.
 
 ## Getting Help
 
-- **GitHub Issues:** For bug reports, data corrections, and feature requests — [github.com/apkumar/cotmatch/issues](https://github.com/apkumar/cotmatch/issues)
-- **Discussions:** For broader questions about the methodology or clinical use cases — [github.com/apkumar/cotmatch/discussions](https://github.com/apkumar/cotmatch/discussions)
+- **GitHub Issues:** For bug reports, data corrections, and feature requests — [github.com/fixourmachine/cotmatch/issues](https://github.com/fixourmachine/cotmatch/issues)
+- **Discussions:** For broader questions about the methodology or clinical use cases — [github.com/fixourmachine/cotmatch/discussions](https://github.com/fixourmachine/cotmatch/discussions)
 
 ---
 
 ## Maintainers and Contributors
 
-CotMatch is maintained by **[apkumar](https://github.com/apkumar)**, a clinician with a background in neonatal medicine.
+CotMatch is maintained by me, **[Dr Akshay Phakey Kumar](https://github.com/fixourmachine)**, a neonatologist based in London. My clinical focus is on neuroprotection, family-integrated care, and individualised haemodynamics. But I also build and deploy tech-based decision tools to improve clinical care and make the difficult job of healthcare providers a little smoother and safer. 
 
 Contributions are welcome from:
 - Neonatologists and neonatal nurses who can validate capability data
@@ -295,7 +295,7 @@ Contributions are welcome from:
 - Clinical informatics professionals with experience in NHS data standards
 - Developers wishing to improve the search, UI, or offline capabilities
 
-Please open a pull request or issue to get involved.
+Please open a pull request or issue to get involved. You can also contact me via <akshay.phakey@nhs.net>.
 
 ---
 
@@ -314,4 +314,4 @@ CotMatch is provided as a **directory aid only**. It is **not** a validated clin
 
 ---
 
-*CotMatch — Because every second in neonatal care counts.*
+*CotMatch — Right care, right time, right place.*
