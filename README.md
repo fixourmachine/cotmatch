@@ -1,4 +1,5 @@
-# CotMatch — UK Neonatal Unit Directory - Right care, right time, right place
+# CotMatch — UK Neonatal Unit Directory
+# Right care, right time, right place
 
 > **A progressive web app for rapid neonatal unit lookup, clinical criteria matching, and transport coordination across the United Kingdom.**
 
