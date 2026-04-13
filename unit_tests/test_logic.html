@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CotMatch — JS Logic Tests</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; padding: 2rem; }
+        h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; }
+        .subtitle { color: #64748b; font-size: 0.875rem; margin-bottom: 2rem; }
+        .summary { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .badge { padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; font-size: 0.875rem; }
+        .badge-pass { background: #dcfce7; color: #166534; }
+        .badge-fail { background: #fee2e2; color: #991b1b; }
+        .badge-skip { background: #fef9c3; color: #854d0e; }
+        .badge-total { background: #e0f2fe; color: #075985; }
+        .suite { margin-bottom: 2rem; background: white; border-radius: 0.75rem; border: 1px solid #e2e8f0; overflow: hidden; }
+        .suite-header { padding: 0.75rem 1rem; background: #f1f5f9; font-weight: 700; font-size: 0.875rem; color: #475569; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; }
+        .test { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.6rem 1rem; border-bottom: 1px solid #f1f5f9; font-size: 0.8125rem; }
+        .test:last-child { border-bottom: none; }
+        .icon { font-size: 1rem; flex-shrink: 0; margin-top: 0.05rem; }
+        .test-name { font-weight: 500; }
+        .test-detail { color: #ef4444; margin-top: 0.2rem; font-size: 0.75rem; font-family: monospace; white-space: pre-wrap; }
+        .pass .icon::before { content: '✅'; }
+        .fail .icon::before { content: '❌'; }
+    </style>
+</head>
+<body>
+
+<h1>🏥 CotMatch — JS Logic Test Suite</h1>
+<p class="subtitle">Tests for distance calculation, filter engine, search matching, and data parsing logic.</p>
+
+<div class="summary" id="summary"></div>
+<div id="output"></div>
+
+<script>
+// ── Micro test framework ───────────────────────────────────────────────────────
+const suites = [];
+let currentSuite = null;
+
+function describe(name, fn) {
+    currentSuite = { name, tests: [] };
+    suites.push(currentSuite);
+    fn();
+    currentSuite = null;
+}
+
+function it(name, fn) {
+    const t = { name, passed: false, error: null };
+    try { fn(); t.passed = true; }
+    catch(e) { t.error = e.message || String(e); }
+    currentSuite.tests.push(t);
+}
+
+function expect(val) {
+    return {
+        toBe(expected) {
+            if (val !== expected) throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(val)}`);
+        },
+        toBeCloseTo(expected, dp = 2) {
+            const diff = Math.abs(val - expected);
+            if (diff >= Math.pow(10, -dp)) throw new Error(`Expected ~${expected}, got ${val}`);
+        },
+        toBeGreaterThan(n) {
+            if (!(val > n)) throw new Error(`Expected ${val} > ${n}`);
+        },
+        toBeLessThan(n) {
+            if (!(val < n)) throw new Error(`Expected ${val} < ${n}`);
+        },
+        toBeGreaterThanOrEqual(n) {
+            if (!(val >= n)) throw new Error(`Expected ${val} >= ${n}`);
+        },
+        toBeLessThanOrEqual(n) {
+            if (!(val <= n)) throw new Error(`Expected ${val} <= ${n}`);
+        },
+        toBeTruthy() {
+            if (!val) throw new Error(`Expected truthy, got ${JSON.stringify(val)}`);
+        },
+        toBeFalsy() {
+            if (val) throw new Error(`Expected falsy, got ${JSON.stringify(val)}`);
+        },
+        toContain(item) {
+            if (!val.includes(item)) throw new Error(`Expected ${JSON.stringify(val)} to contain ${JSON.stringify(item)}`);
+        },
+        toEqual(expected) {
+            if (JSON.stringify(val) !== JSON.stringify(expected))
+                throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(val)}`);
+        },
+        toBeNull() {
+            if (val !== null) throw new Error(`Expected null, got ${JSON.stringify(val)}`);
+        },
+        not: {
+            toBe(expected) {
+                if (val === expected) throw new Error(`Expected NOT ${JSON.stringify(expected)}`);
+            },
+            toBeNull() {
+                if (val === null) throw new Error(`Expected non-null`);
+            },
+        }
+    };
+}
+
+
+// ── Functions under test (copied from cotmatch_v2.html logic) ─────────────────
+
+function calculateMiles(lat1, lon1, lat2, lon2) {
+    const R = 3958.8;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function parseLevel(raw) {
+    return raw ? parseInt(String(raw).replace('L', '')) : 1;
+}
+
+function fuzzyMatch(query, unit) {
+    const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+    const queryRaw = query.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const fullText = [
+        unit.name, unit.name_full, unit.trust, unit.trust_full,
+        unit.address, unit.postcode, unit.odn, unit.odn_full,
+        unit.transport, unit.transport_full
+    ].join(' ').toLowerCase();
+
+    if (queryWords.every(w => fullText.includes(w))) return true;
+
+    let qIdx = 0;
+    const normName = (unit.name_full || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    for (let i = 0; i < normName.length && qIdx < queryRaw.length; i++) {
+        if (normName[i] === queryRaw[qIdx]) qIdx++;
+    }
+    return qIdx === queryRaw.length;
+}
+
+// Simulates the filter engine's unit-level accept logic
+function unitPassesFilters(u, { wIn, gIn, level, odn, req }) {
+    if (!isNaN(wIn) && u.wt > 0 && u.wt > wIn) return false;
+    if (!isNaN(gIn) && u.gest > 0 && u.gest > gIn) return false;
+    if (level !== 'all' && u.level < parseInt(level)) return false;
+    if (odn !== 'all' && u.odn !== odn) return false;
+    for (let k in req) if (req[k] && u[k] === 0) return false;
+    return true;
+}
+
+
+// ── Test suites ───────────────────────────────────────────────────────────────
+
+describe('Distance Calculation (Haversine)', () => {
+    it('distance from same point is 0', () => {
+        expect(calculateMiles(51.5, -0.1, 51.5, -0.1)).toBeCloseTo(0, 1);
+    });
+
+    it('London to Edinburgh is approximately 332 miles', () => {
+        const d = calculateMiles(51.5074, -0.1278, 55.9533, -3.1883);
+        expect(d).toBeGreaterThan(320);
+        expect(d).toBeLessThan(345);
+    });
+
+    it('London to Manchester is approximately 163 miles', () => {
+        const d = calculateMiles(51.5074, -0.1278, 53.4808, -2.2426);
+        expect(d).toBeGreaterThan(155);
+        expect(d).toBeLessThan(175);
+    });
+
+    it('London to Glasgow is approximately 345 miles', () => {
+        const d = calculateMiles(51.5074, -0.1278, 55.8642, -4.2518);
+        expect(d).toBeGreaterThan(335);
+        expect(d).toBeLessThan(360);
+    });
+
+    it('returns a positive value for any two different UK points', () => {
+        const d = calculateMiles(50.72, -1.88, 53.80, -1.55);
+        expect(d).toBeGreaterThan(0);
+    });
+
+    it('is symmetric (A→B same as B→A)', () => {
+        const d1 = calculateMiles(51.5, -0.1, 53.4, -2.2);
+        const d2 = calculateMiles(53.4, -2.2, 51.5, -0.1);
+        expect(Math.abs(d1 - d2)).toBeLessThan(0.001);
+    });
+});
+
+
+describe('Level of Care Parsing', () => {
+    it('parses integer 3 correctly', () => {
+        expect(parseLevel(3)).toBe(3);
+    });
+
+    it('parses string "L3" correctly', () => {
+        expect(parseLevel('L3')).toBe(3);
+    });
+
+    it('parses string "L2" correctly', () => {
+        expect(parseLevel('L2')).toBe(2);
+    });
+
+    it('parses string "1" correctly', () => {
+        expect(parseLevel('1')).toBe(1);
+    });
+
+    it('defaults to 1 when value is null/undefined', () => {
+        expect(parseLevel(null)).toBe(1);
+        expect(parseLevel(undefined)).toBe(1);
+    });
+});
+
+
+describe('Fuzzy Search Matching', () => {
+    const qeWoolwich = {
+        name: 'Q. Elizabeth Hosp',
+        name_full: 'Queen Elizabeth Hospital',
+        trust: 'Lewisham & Greenwich NHS Trust',
+        trust_full: 'Lewisham & Greenwich NHS Trust',
+        address: 'Stadium Rd, Woolwich',
+        postcode: 'SE18 4QH',
+        odn: 'London',
+        odn_full: 'London Neonatal Operational Delivery Network',
+        transport: 'NTS London',
+        transport_full: 'NTS London',
+    };
+
+    const gosh = {
+        name: 'Great Ormond Street Hospital',
+        name_full: 'Great Ormond Street Hospital',
+        trust: 'GOSH NHS Foundation Trust',
+        trust_full: 'Great Ormond Street Hospital NHS Foundation Trust',
+        address: 'Great Ormond St, London',
+        postcode: 'WC1N 3JH',
+        odn: 'London',
+        odn_full: 'London Neonatal Operational Delivery Network',
+        transport: 'NTS London',
+        transport_full: 'NTS London',
+    };
+
+    it('finds "Q. Elizabeth Hosp" by searching "queen elizabeth"', () => {
+        expect(fuzzyMatch('queen elizabeth', qeWoolwich)).toBeTruthy();
+    });
+
+    it('finds "Q. Elizabeth Hosp" by searching "queen elizabeth woolwich"', () => {
+        expect(fuzzyMatch('queen elizabeth woolwich', qeWoolwich)).toBeTruthy();
+    });
+
+    it('finds "Q. Elizabeth Hosp" by abbreviated "q. elizabeth"', () => {
+        expect(fuzzyMatch('q. elizabeth', qeWoolwich)).toBeTruthy();
+    });
+
+    it('finds GOSH by searching "gosh"', () => {
+        expect(fuzzyMatch('gosh', gosh)).toBeTruthy();
+    });
+
+    it('finds GOSH by searching "great ormond"', () => {
+        expect(fuzzyMatch('great ormond', gosh)).toBeTruthy();
+    });
+
+    it('finds unit by postcode', () => {
+        expect(fuzzyMatch('SE18', qeWoolwich)).toBeTruthy();
+    });
+
+    it('finds unit by ODN', () => {
+        expect(fuzzyMatch('london', qeWoolwich)).toBeTruthy();
+    });
+
+    it('does not match unrelated query', () => {
+        expect(fuzzyMatch('manchester royal', qeWoolwich)).toBeFalsy();
+    });
+
+    it('finds unit by partial trust name', () => {
+        expect(fuzzyMatch('lewisham', qeWoolwich)).toBeTruthy();
+    });
+});
+
+
+describe('Filter Engine Logic', () => {
+    const nicu = { name: 'Test NICU', wt: 500, gest: 23, level: 3, odn: 'London', ino: 1, ecmo: 1, cooling: 1, gen: 1 };
+    const lnu  = { name: 'Test LNU',  wt: 1000, gest: 27, level: 2, odn: 'North West', ino: 0, ecmo: 0, cooling: 1, gen: 0 };
+    const scbu = { name: 'Test SCBU', wt: 1800, gest: 32, level: 1, odn: 'Northern',   ino: 0, ecmo: 0, cooling: 0, gen: 0 };
+
+    it('accepts baby weight above threshold', () => {
+        expect(unitPassesFilters(nicu, { wIn: 600, gIn: NaN, level: 'all', odn: 'all', req: {} })).toBeTruthy();
+    });
+
+    it('rejects baby weight below threshold', () => {
+        expect(unitPassesFilters(nicu, { wIn: 400, gIn: NaN, level: 'all', odn: 'all', req: {} })).toBeFalsy();
+    });
+
+    it('unit with wt:0 (no limit) always accepts any weight', () => {
+        const openUnit = { ...nicu, wt: 0 };
+        expect(unitPassesFilters(openUnit, { wIn: 100, gIn: NaN, level: 'all', odn: 'all', req: {} })).toBeTruthy();
+    });
+
+    it('accepts baby gestation above threshold', () => {
+        expect(unitPassesFilters(nicu, { wIn: NaN, gIn: 25, level: 'all', odn: 'all', req: {} })).toBeTruthy();
+    });
+
+    it('rejects baby gestation below threshold', () => {
+        expect(unitPassesFilters(nicu, { wIn: NaN, gIn: 22, level: 'all', odn: 'all', req: {} })).toBeFalsy();
+    });
+
+    it('level filter: requesting L3 excludes L1 and L2', () => {
+        expect(unitPassesFilters(lnu,  { wIn: NaN, gIn: NaN, level: '3', odn: 'all', req: {} })).toBeFalsy();
+        expect(unitPassesFilters(scbu, { wIn: NaN, gIn: NaN, level: '3', odn: 'all', req: {} })).toBeFalsy();
+    });
+
+    it('level filter: requesting L2 excludes L1 but includes L3', () => {
+        expect(unitPassesFilters(lnu,  { wIn: NaN, gIn: NaN, level: '2', odn: 'all', req: {} })).toBeTruthy();
+        expect(unitPassesFilters(nicu, { wIn: NaN, gIn: NaN, level: '2', odn: 'all', req: {} })).toBeTruthy();
+        expect(unitPassesFilters(scbu, { wIn: NaN, gIn: NaN, level: '2', odn: 'all', req: {} })).toBeFalsy();
+    });
+
+    it('level filter: requesting L1 includes all levels', () => {
+        expect(unitPassesFilters(scbu, { wIn: NaN, gIn: NaN, level: '1', odn: 'all', req: {} })).toBeTruthy();
+        expect(unitPassesFilters(lnu,  { wIn: NaN, gIn: NaN, level: '1', odn: 'all', req: {} })).toBeTruthy();
+        expect(unitPassesFilters(nicu, { wIn: NaN, gIn: NaN, level: '1', odn: 'all', req: {} })).toBeTruthy();
+    });
+
+    it('ODN filter excludes wrong network', () => {
+        expect(unitPassesFilters(nicu, { wIn: NaN, gIn: NaN, level: 'all', odn: 'North West', req: {} })).toBeFalsy();
+    });
+
+    it('ODN filter includes correct network', () => {
+        expect(unitPassesFilters(nicu, { wIn: NaN, gIn: NaN, level: 'all', odn: 'London', req: {} })).toBeTruthy();
+    });
+
+    it('capability filter: requiring ECMO excludes units without it', () => {
+        expect(unitPassesFilters(lnu, { wIn: NaN, gIn: NaN, level: 'all', odn: 'all', req: { ecmo: true } })).toBeFalsy();
+    });
+
+    it('capability filter: requiring ECMO includes units with it', () => {
+        expect(unitPassesFilters(nicu, { wIn: NaN, gIn: NaN, level: 'all', odn: 'all', req: { ecmo: true } })).toBeTruthy();
+    });
+
+    it('multiple capability requirements all applied', () => {
+        expect(unitPassesFilters(nicu, { wIn: NaN, gIn: NaN, level: 'all', odn: 'all', req: { ino: true, cooling: true } })).toBeTruthy();
+        expect(unitPassesFilters(lnu,  { wIn: NaN, gIn: NaN, level: 'all', odn: 'all', req: { ino: true, cooling: true } })).toBeFalsy();
+    });
+});
+
+
+describe('SW1A 0AA Default Sort Anchor', () => {
+    const WESTMINSTER = { lat: 51.5010, lon: -0.1247 };
+
+    it('SW1A 0AA coordinates are in central London', () => {
+        expect(WESTMINSTER.lat).toBeGreaterThan(51.4);
+        expect(WESTMINSTER.lat).toBeLessThan(51.6);
+        expect(WESTMINSTER.lon).toBeGreaterThan(-0.2);
+        expect(WESTMINSTER.lon).toBeLessThan(0.0);
+    });
+
+    it('UCLH (WC1E 6BT) is closer to Westminster than Glasgow', () => {
+        const uclh    = { lat: 51.5247, lon: -0.1340 };
+        const glasgow = { lat: 55.8642, lon: -4.2518 };
+        const dUCLH   = calculateMiles(WESTMINSTER.lat, WESTMINSTER.lon, uclh.lat, uclh.lon);
+        const dGlasgow = calculateMiles(WESTMINSTER.lat, WESTMINSTER.lon, glasgow.lat, glasgow.lon);
+        expect(dUCLH).toBeLessThan(dGlasgow);
+    });
+});
+
+
+describe('Fuzzy Search Matching (Edge Cases)', () => {
+    const qeWoolwich = {
+        name: 'Q. Elizabeth Hosp',
+        name_full: 'Queen Elizabeth Hospital',
+        trust: 'Lewisham & Greenwich NHS Trust',
+        trust_full: 'Lewisham & Greenwich NHS Trust',
+        address: 'Stadium Rd, Woolwich',
+        postcode: 'SE18 4QH',
+        odn: 'London',
+        odn_full: 'London Neonatal Operational Delivery Network',
+        transport: 'NTS London',
+        transport_full: 'NTS London',
+    };
+
+    it('handles multiple spaces in query correctly', () => {
+        expect(fuzzyMatch('queen    elizabeth', qeWoolwich)).toBeTruthy();
+    });
+
+    it('handles uppercase input gracefully', () => {
+        expect(fuzzyMatch('QUEEN ELIZABETH', qeWoolwich)).toBeTruthy();
+    });
+
+    it('handles leading and trailing spaces', () => {
+        expect(fuzzyMatch('  queen elizabeth  ', qeWoolwich)).toBeTruthy();
+    });
+
+    it('handles partial character matching within full name sequence', () => {
+        expect(fuzzyMatch('qelizabeth', qeWoolwich)).toBeTruthy();
+    });
+
+    it('fails when characters are completely out of order', () => {
+        expect(fuzzyMatch('elizabethq', qeWoolwich)).toBeFalsy();
+    });
+});
+
+
+describe('Filter Engine Boundary Cases', () => {
+    const nicu = { name: 'Test NICU', wt: 500, gest: 23, level: 3, odn: 'London', ino: 1, ecmo: 1, cooling: 1, gen: 1 };
+    
+    it('accepts weight exactly equal to unit threshold', () => {
+        expect(unitPassesFilters(nicu, { wIn: 500, gIn: NaN, level: 'all', odn: 'all', req: {} })).toBeTruthy();
+    });
+
+    it('rejects weight 1g below unit threshold', () => {
+        expect(unitPassesFilters(nicu, { wIn: 499, gIn: NaN, level: 'all', odn: 'all', req: {} })).toBeFalsy();
+    });
+
+    it('accepts gestation exactly equal to unit threshold', () => {
+        expect(unitPassesFilters(nicu, { wIn: NaN, gIn: 23, level: 'all', odn: 'all', req: {} })).toBeTruthy();
+    });
+
+    it('rejects gestation 1 week below unit threshold', () => {
+        expect(unitPassesFilters(nicu, { wIn: NaN, gIn: 22, level: 'all', odn: 'all', req: {} })).toBeFalsy();
+    });
+
+    it('both weight and gestation limits evaluated correctly (both pass)', () => {
+        expect(unitPassesFilters(nicu, { wIn: 600, gIn: 24, level: 'all', odn: 'all', req: {} })).toBeTruthy();
+    });
+
+    it('both limits evaluated and one fails (weight fails)', () => {
+        expect(unitPassesFilters(nicu, { wIn: 400, gIn: 24, level: 'all', odn: 'all', req: {} })).toBeFalsy();
+    });
+
+    it('both limits evaluated and one fails (gest fails)', () => {
+        expect(unitPassesFilters(nicu, { wIn: 600, gIn: 22, level: 'all', odn: 'all', req: {} })).toBeFalsy();
+    });
+});
+
+
+// ── Render results ─────────────────────────────────────────────────────────────
+
+let totalPass = 0, totalFail = 0;
+const output = document.getElementById('output');
+
+suites.forEach(suite => {
+    const passCount = suite.tests.filter(t => t.passed).length;
+    const failCount = suite.tests.length - passCount;
+    totalPass += passCount;
+    totalFail += failCount;
+
+    const suiteBadge = failCount === 0
+        ? `<span class="badge badge-pass">${passCount} passed</span>`
+        : `<span class="badge badge-fail">${failCount} failed</span>`;
+
+    const testsHTML = suite.tests.map(t => `
+        <div class="test ${t.passed ? 'pass' : 'fail'}">
+            <span class="icon"></span>
+            <div>
+                <div class="test-name">${t.name}</div>
+                ${t.error ? `<div class="test-detail">${t.error}</div>` : ''}
+            </div>
+        </div>
+    `).join('');
+
+    output.innerHTML += `
+        <div class="suite">
+            <div class="suite-header">
+                <span>${suite.name}</span>
+                ${suiteBadge}
+            </div>
+            ${testsHTML}
+        </div>`;
+});
+
+const total = totalPass + totalFail;
+document.getElementById('summary').innerHTML = `
+    <div class="badge badge-total">Total: ${total}</div>
+    <div class="badge badge-pass">✅ Passed: ${totalPass}</div>
+    ${totalFail > 0 ? `<div class="badge badge-fail">❌ Failed: ${totalFail}</div>` : ''}
+`;
+
+document.title = `CotMatch Tests — ${totalFail === 0 ? '✅ All Passed' : '❌ ' + totalFail + ' Failed'}`;
+</script>
+</body>
+</html>

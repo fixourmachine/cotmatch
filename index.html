@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en"> 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CotMatch: National Neonatal Search</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+    
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans h-screen flex overflow-hidden">
+
+    <!-- Sidebar / Filters -->
+    <aside class="w-full md:w-80 lg:w-96 glass-panel border-r border-slate-200 shadow-sm flex flex-col h-full z-40 md:z-10 flex-shrink-0 transition-transform duration-300 absolute top-0 left-0 md:relative transform md:translate-x-0 -translate-x-full" id="sidebar">
+        <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-white">
+            <div>
+                <h1 class="text-xl font-bold text-slate-900 tracking-tight">CotMatch</h1>
+                <p class="text-xs text-slate-500 mt-1">National Repatriation Search</p>
+            </div>
+            <button class="md:hidden text-slate-400 hover:text-slate-600" onclick="toggleSidebar()">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto flex-1 space-y-8 bg-white">
+            <!-- Parameters -->
+            <section>
+                <h3 class="section-title">Patient Parameters</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1" for="postcode">Home Postcode</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="postcode" placeholder="e.g. SE1 7EH" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border outline-none transition-shadow uppercase" onkeypress="if(event.key==='Enter') fetchLocation()">
+                            <button onclick="fetchLocation()" class="px-3 py-2 bg-slate-800 text-white rounded-md text-sm font-medium hover:bg-slate-900 transition-colors">Locate</button>
+                        </div>
+                        <p id="postcode-status" class="text-xs mt-1 text-slate-500 hidden"></p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1" for="weight">Weight (g)</label>
+                            <input type="number" id="weight" placeholder="e.g. 950" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 sm:text-sm px-3 py-2 border outline-none" oninput="filterData()">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1" for="gestation">Gest (wks)</label>
+                            <input type="number" id="gestation" placeholder="e.g. 28" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 sm:text-sm px-3 py-2 border outline-none" oninput="filterData()">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Unit Profile -->
+            <section>
+                <h3 class="section-title">Unit Profile</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1" for="level">Minimum Level of Care</label>
+                        <select id="level" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border outline-none bg-white" onchange="filterData()">
+                            <option value="all">Any Level</option>
+                            <option value="1">Level 1 (SCBU)</option>
+                            <option value="2">Level 2 (LNU)</option>
+                            <option value="3">Level 3 (NICU)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1" for="odn">Network (ODN)</label>
+                        <select id="odn" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border outline-none bg-white" onchange="filterData()">
+                            <option value="all">All Networks</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Capabilities -->
+            <section>
+                <h3 class="section-title">Required Capabilities</h3>
+                <div class="space-y-5">
+                    <div>
+                        <h4 class="text-sm font-medium text-slate-900 mb-2">Nursing & Feeding</h4>
+                        <div class="flex flex-col space-y-1">
+                            <label class="checkbox-label"><input type="checkbox" id="req-cpap" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">CPAP / HHFNC</span></label>
+                            <label class="checkbox-label"><input type="checkbox" id="req-ngt" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">Hourly NGT Feeds</span></label>
+                            <label class="checkbox-label"><input type="checkbox" id="req-njt" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">NJT Care</span></label>
+                            <label class="checkbox-label"><input type="checkbox" id="req-cont" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">Continuous Pump Feeds</span></label>
+                            <label class="checkbox-label"><input type="checkbox" id="req-pn" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">Parenteral Nutrition (PN)</span></label>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-medium text-slate-900 mb-2">Complex Care</h4>
+                        <div class="flex flex-col space-y-1">
+                            <label class="checkbox-label"><input type="checkbox" id="req-long" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">Long Line / PICC</span></label>
+                            <label class="checkbox-label"><input type="checkbox" id="req-brov" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">Broviac / Hickman</span></label>
+                            <label class="checkbox-label"><input type="checkbox" id="req-vent" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">Ventricular Taps</span></label>
+                            <label class="checkbox-label"><input type="checkbox" id="req-conv" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">Convulsion Mgmt</span></label>
+                            <label class="checkbox-label"><input type="checkbox" id="req-stoma" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">Stoma Care</span></label>
+                            <label class="checkbox-label"><input type="checkbox" id="req-trachy" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">Tracheostomy Care</span></label>
+                            <label class="checkbox-label"><input type="checkbox" id="req-pall" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">Palliative Care</span></label>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-medium text-slate-900 mb-2">Advanced Facilities</h4>
+                        <div class="flex flex-col space-y-1">
+                            <label class="checkbox-label"><input type="checkbox" id="req-ino" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">Inhaled Nitric Oxide (iNO)</span></label>
+                            <label class="checkbox-label"><input type="checkbox" id="req-ecmo" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">Respiratory ECMO</span></label>
+                            <label class="checkbox-label"><input type="checkbox" id="req-cooling" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">Active Cooling</span></label>
+                            <label class="checkbox-label"><input type="checkbox" id="req-laser" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">Laser (ROP)</span></label>
+                            <label class="checkbox-label"><input type="checkbox" id="req-picu" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">On-site PICU</span></label>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-medium text-slate-900 mb-2">Specialties</h4>
+                        <div class="flex flex-col space-y-1">
+                            <label class="checkbox-label"><input type="checkbox" id="req-gen" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">On-site Gen Surgery</span></label>
+                            <label class="checkbox-label"><input type="checkbox" id="req-neurosurg" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">On-site Neurosurgery</span></label>
+                            <label class="checkbox-label"><input type="checkbox" id="req-cardio" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">On-site Cardiology</span></label>
+                            <label class="checkbox-label"><input type="checkbox" id="req-ent" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">Paediatric ENT</span></label>
+                            <label class="checkbox-label"><input type="checkbox" id="req-paed_anaes" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">Paed Anaesthetic Support</span></label>
+                            <label class="checkbox-label"><input type="checkbox" id="req-ltv" class="checkbox-input" onchange="filterData()"><span class="checkbox-text">Paed Resp / LTV</span></label>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+        
+        <div class="p-4 bg-slate-50 border-t border-slate-200 flex gap-3">
+            <button onclick="resetFilters()" class="flex-1 py-2 bg-white border border-slate-300 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-sm">Clear All</button>
+            <button onclick="toggleSidebar()" class="md:hidden flex-1 py-2 bg-slate-800 text-white rounded-md text-sm font-medium hover:bg-slate-900 transition-colors shadow-sm">View Results</button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full relative w-full">
+        <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-[0] z-[10] shadow-sm w-full gap-4 flex-wrap">
+            <div class="flex items-center gap-4 flex-shrink-0">
+                <button class="md:hidden p-2 -ml-2 text-slate-500 hover:text-slate-700" onclick="toggleSidebar()">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-800 tracking-tight">Matching Units</h2>
+                    <p class="text-sm text-slate-500"><span id="result-count" class="font-medium text-blue-600">0</span> eligible units</p>
+                </div>
+            </div>
+            
+            <div class="relative w-full sm:w-64 md:w-80 flex-shrink-0">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                </div>
+                <input type="text" id="unitSearch" placeholder="Search hospital name..." class="w-full pl-9 pr-9 py-2 border border-slate-300 rounded-md leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors" autocomplete="off" oninput="handleSearchInput()" onfocus="handleSearchInput()">
+                <button type="button" id="clearSearchBtn" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 hidden" onclick="clearSearch()" title="Clear search">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+                <div id="searchSuggestions" class="absolute z-20 w-full mt-1 bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm hidden">
+                </div>
+            </div>
+        </header>
+        <div id="location-warning-banner" class="bg-amber-50 border-b border-amber-200 px-6 py-2.5 flex items-center gap-2 hidden z-[5] w-full shrink-0 shadow-sm">
+            <svg class="h-4 w-4 text-amber-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <p class="text-xs text-amber-800 font-medium tracking-wide">📍 Showing distances from Central London defaults (valid home postcode not provided)</p>
+        </div>
+
+
+        <div class="flex-1 overflow-y-auto p-6 bg-slate-50/50 w-full" id="results-container">
+            <!-- Cards injected via JS -->
+        </div>
+    </main>
+
+    
+<script src="app.js"></script>
+</body>
+</html>
