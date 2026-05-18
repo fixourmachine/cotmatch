@@ -2280,7 +2280,7 @@
         },
         "advanced_facilities": {
             "ino": true,
-            "respiratory_ecmo": false,
+            "respiratory_ecmo": true,
             "active_cooling": true,
             "laser_rop": true,
             "on_site_picu": true
